@@ -1,11 +1,8 @@
 {
   "name": "@shopify/hydrogen",
-  "publishConfig": {
-    "access": "public",
-    "@shopify:registry": "https://registry.npmjs.org"
-  },
+  "private": true,
   "type": "module",
-  "version": "2024.4.7",
+  "version": "2024.4.9",
   "license": "MIT",
   "main": "dist/index.cjs",
   "module": "dist/production/index.js",
