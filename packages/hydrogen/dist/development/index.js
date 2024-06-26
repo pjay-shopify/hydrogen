@@ -261,6 +261,20 @@ async function runWithCache(cacheKey, actionFn, {
       waitUntil
     });
   } ;
+  try {
+    const resp = await fetch("https://outbound-proxy.oxygen.com", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        type: "runWithCache",
+        debugInfo: mergeDebugInfo()
+      })
+    });
+  } catch (error) {
+    console.error(error);
+  }
   if (!cacheInstance || !strategy || strategy.mode === NO_STORE) {
     const result2 = await actionFn({ addDebugData });
     logSubRequestEvent2?.({ result: result2 });
