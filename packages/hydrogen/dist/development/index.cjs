@@ -355,23 +355,10 @@ async function runWithCache(cacheKey, actionFn, {
       waitUntil
     });
   } ;
-  try {
-    const resp = await fetch("https://outbound-proxy.oxygen.com", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        type: "runWithCache",
-        debugInfo: mergeDebugInfo()
-      })
-    });
-  } catch (error) {
-    console.error(error);
-  }
   if (!cacheInstance || !strategy || strategy.mode === NO_STORE) {
     const result2 = await actionFn({ addDebugData });
     logSubRequestEvent2?.({ result: result2 });
+    waitUntil?.(emitSpanEvent(mergeDebugInfo(), startTime));
     return result2;
   }
   const storeInCache = (value) => setItemInCache(
@@ -401,6 +388,7 @@ async function runWithCache(cacheKey, actionFn, {
               cacheStatus: "PUT",
               overrideStartTime: revalidateStartTime
             });
+            await emitSpanEvent(mergeDebugInfo(), revalidateStartTime, "PUT");
           }
         } catch (error) {
           if (error.message) {
@@ -417,6 +405,7 @@ async function runWithCache(cacheKey, actionFn, {
       result: cachedResult,
       cacheStatus
     });
+    waitUntil?.(emitSpanEvent(mergeDebugInfo(), startTime, cacheStatus));
     return cachedResult;
   }
   const result = await actionFn({ addDebugData });
@@ -424,6 +413,7 @@ async function runWithCache(cacheKey, actionFn, {
     result,
     cacheStatus: "MISS"
   });
+  waitUntil?.(emitSpanEvent(mergeDebugInfo(), startTime, "MISS"));
   if (shouldCacheResult(result)) {
     const cacheStoringPromise = Promise.resolve().then(async () => {
       const putStartTime = Date.now();
@@ -433,10 +423,62 @@ async function runWithCache(cacheKey, actionFn, {
         cacheStatus: "PUT",
         overrideStartTime: putStartTime
       });
+      await emitSpanEvent(mergeDebugInfo(), putStartTime, "PUT");
     });
     waitUntil?.(cacheStoringPromise);
   }
   return result;
+}
+async function emitSpanEvent(debugInfo, startTime, cacheStatus) {
+  try {
+    const traceId = ensureExpectedRequestId(debugInfo?.requestId || generateRandomHex(16));
+    const endTime = Date.now();
+    let displayName;
+    if (debugInfo?.displayName) {
+      displayName = debugInfo.displayName;
+    } else {
+      if (debugInfo.graphql) {
+        displayName = debugInfo.graphql?.match(/(query|mutation)\s+(\w+)/)?.[0]?.replace(/\s+/, " ");
+      }
+    }
+    if (cacheStatus) {
+      displayName = `Cache [${cacheStatus}] ${displayName}`;
+    }
+    const resp = await fetch("https://outbound-proxy.oxygen.com", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        traceId,
+        id: generateRandomHex(16),
+        name: displayName,
+        timestamp: startTime * 1e3,
+        duration: (endTime - startTime) * 1e3,
+        parentId: traceId,
+        tags: {
+          "request.type": cacheStatus ? "cache" : "subrequest"
+        }
+      })
+    });
+  } catch (error) {
+    console.error(error);
+  }
+}
+function ensureExpectedRequestId(id) {
+  const idArray = id.split(".");
+  if (idArray.length === 2) {
+    return idArray[1];
+  } else {
+    return id;
+  }
+}
+function generateRandomHex(len) {
+  let result = "";
+  while (result.length < len) {
+    result += Math.floor(Math.random() * 16).toString(16);
+  }
+  return result.substring(0, len);
 }
 
 // src/cache/server-fetch.ts
