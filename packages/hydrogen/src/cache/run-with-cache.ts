@@ -12,7 +12,7 @@ import {
 } from './sub-request';
 import {type StackInfo} from '../utils/callsites';
 import {hashKey} from '../utils/hash';
-import { emitSpanEvent } from '../tracing';
+import { SpanEmitter } from '../tracing';
 
 /**
  * The cache key is used to uniquely identify a value in the cache.
@@ -53,6 +53,7 @@ type WithCacheOptions<T = unknown> = {
   shouldCacheResult?: (value: T) => boolean;
   waitUntil?: ExecutionContext['waitUntil'];
   debugInfo?: DebugOptions;
+  spanEmitter?: SpanEmitter;
 };
 
 // Lock to prevent revalidating the same sub-request
@@ -75,6 +76,7 @@ export async function runWithCache<T = unknown>(
     shouldCacheResult = () => true,
     waitUntil,
     debugInfo,
+    spanEmitter = () => {},
   }: WithCacheOptions<T>,
 ): Promise<T> {
   const startTime = Date.now();
@@ -145,7 +147,7 @@ export async function runWithCache<T = unknown>(
     const result = await actionFn({addDebugData});
     // Log non-cached requests
     logSubRequestEvent?.({result});
-    emitSpanEvent(mergeDebugInfo(), startTime);
+    spanEmitter(mergeDebugInfo(), startTime);
     return result;
   }
 
@@ -194,7 +196,7 @@ export async function runWithCache<T = unknown>(
               overrideStartTime: revalidateStartTime,
             });
 
-            emitSpanEvent(mergeDebugInfo(), revalidateStartTime, 'PUT');
+            spanEmitter(mergeDebugInfo(), revalidateStartTime, 'PUT');
           }
         } catch (error: any) {
           if (error.message) {
@@ -217,7 +219,7 @@ export async function runWithCache<T = unknown>(
       cacheStatus,
     });
 
-    emitSpanEvent(mergeDebugInfo(), startTime, cacheStatus);
+    spanEmitter(mergeDebugInfo(), startTime, cacheStatus);
 
     return cachedResult;
   }
@@ -230,7 +232,7 @@ export async function runWithCache<T = unknown>(
     cacheStatus: 'MISS',
   });
 
-  emitSpanEvent(mergeDebugInfo(), startTime, 'MISS');
+  spanEmitter(mergeDebugInfo(), startTime, 'MISS');
 
   /**
    * Important: Do this async
@@ -245,7 +247,7 @@ export async function runWithCache<T = unknown>(
         overrideStartTime: putStartTime,
       });
 
-      emitSpanEvent(mergeDebugInfo(), putStartTime, 'PUT');
+      spanEmitter(mergeDebugInfo(), putStartTime, 'PUT');
     });
 
     waitUntil?.(cacheStoringPromise);

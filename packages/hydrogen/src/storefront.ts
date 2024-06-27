@@ -53,6 +53,7 @@ import {
   withSyncStack,
   type StackInfo,
 } from './utils/callsites';
+import { SpanEmitter } from './tracing';
 
 export type I18nBase = {
   language: LanguageCode;
@@ -173,6 +174,7 @@ type HydrogenClientProps<TI18n> = {
   i18n?: TI18n;
   /** Whether it should print GraphQL errors automatically. Defaults to true */
   logErrors?: boolean | ((error?: Error) => boolean);
+  spanEmitter?: SpanEmitter;
 };
 
 export type CreateStorefrontClientOptions<TI18n extends I18nBase> =
@@ -218,6 +220,7 @@ export function createStorefrontClient<TI18n extends I18nBase>(
     i18n,
     storefrontId,
     logErrors = true,
+    spanEmitter,
     ...clientOptions
   } = options;
   const H2_PREFIX_WARN = '[h2:warn:createStorefrontClient] ';
@@ -336,6 +339,7 @@ export function createStorefrontClient<TI18n extends I18nBase>(
         graphql: graphqlData,
         purpose: storefrontHeaders?.purpose,
       },
+      spanEmitter
     });
 
     const errorOptions: GraphQLErrorOptions<T> = {

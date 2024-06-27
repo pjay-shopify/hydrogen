@@ -207,68 +207,6 @@ function hashKey(queryKey) {
   return encodeURIComponent(hash);
 }
 
-// src/tracing.ts
-function emitSpanEvent(debugInfo, startTime, cacheStatus, root) {
-  globalThis.__SPANS = globalThis.__SPANS || [];
-  try {
-    const traceId = ensureExpectedRequestId(debugInfo?.requestId || generateRandomHex(16));
-    const endTime = Date.now();
-    let displayName = "unknown";
-    if (debugInfo?.displayName) {
-      displayName = debugInfo.displayName;
-    } else {
-      if (debugInfo.graphql) {
-        displayName = debugInfo.graphql?.match(/(query|mutation)\s+(\w+)/)?.[0]?.replace(/\s+/, " ") || "GraphQL";
-      }
-    }
-    if (cacheStatus) {
-      displayName = `Cache [${cacheStatus}] ${displayName}`;
-    }
-    const trace = {
-      traceId,
-      id: root ? traceId : generateRandomHex(16),
-      name: displayName,
-      timestamp: startTime * 1e3,
-      duration: (endTime - startTime) * 1e3,
-      parentId: root ? void 0 : traceId,
-      tags: {
-        "request.type": cacheStatus ? "cache" : "subrequest"
-      }
-    };
-    globalThis.__SPANS.push(trace);
-  } catch (error) {
-    console.error(error);
-  }
-}
-async function flushSpanEvents() {
-  if (globalThis.__SPANS) {
-    const spans = globalThis.__SPANS;
-    globalThis.__SPANS = [];
-    await fetch("https://outbound-proxy.oxygen.com", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(spans)
-    });
-  }
-}
-function ensureExpectedRequestId(id) {
-  const idArray = id.split(".");
-  if (idArray.length === 2) {
-    return idArray[1];
-  } else {
-    return id;
-  }
-}
-function generateRandomHex(len) {
-  let result = "";
-  while (result.length < len) {
-    result += Math.floor(Math.random() * 16).toString(16);
-  }
-  return result.substring(0, len);
-}
-
 // src/cache/run-with-cache.ts
 var swrLock = /* @__PURE__ */ new Set();
 async function runWithCache(cacheKey, actionFn, {
@@ -276,7 +214,9 @@ async function runWithCache(cacheKey, actionFn, {
   cacheInstance,
   shouldCacheResult = () => true,
   waitUntil,
-  debugInfo
+  debugInfo,
+  spanEmitter = () => {
+  }
 }) {
   const startTime = Date.now();
   const key = hashKey([
@@ -326,7 +266,7 @@ async function runWithCache(cacheKey, actionFn, {
   if (!cacheInstance || !strategy || strategy.mode === NO_STORE) {
     const result2 = await actionFn({ addDebugData });
     logSubRequestEvent2?.({ result: result2 });
-    emitSpanEvent(mergeDebugInfo(), startTime);
+    spanEmitter(mergeDebugInfo(), startTime);
     return result2;
   }
   const storeInCache = (value) => setItemInCache(
@@ -356,7 +296,7 @@ async function runWithCache(cacheKey, actionFn, {
               cacheStatus: "PUT",
               overrideStartTime: revalidateStartTime
             });
-            emitSpanEvent(mergeDebugInfo(), revalidateStartTime, "PUT");
+            spanEmitter(mergeDebugInfo(), revalidateStartTime, "PUT");
           }
         } catch (error) {
           if (error.message) {
@@ -373,7 +313,7 @@ async function runWithCache(cacheKey, actionFn, {
       result: cachedResult,
       cacheStatus
     });
-    emitSpanEvent(mergeDebugInfo(), startTime, cacheStatus);
+    spanEmitter(mergeDebugInfo(), startTime, cacheStatus);
     return cachedResult;
   }
   const result = await actionFn({ addDebugData });
@@ -381,7 +321,7 @@ async function runWithCache(cacheKey, actionFn, {
     result,
     cacheStatus: "MISS"
   });
-  emitSpanEvent(mergeDebugInfo(), startTime, "MISS");
+  spanEmitter(mergeDebugInfo(), startTime, "MISS");
   if (shouldCacheResult(result)) {
     const cacheStoringPromise = Promise.resolve().then(async () => {
       const putStartTime = Date.now();
@@ -391,7 +331,7 @@ async function runWithCache(cacheKey, actionFn, {
         cacheStatus: "PUT",
         overrideStartTime: putStartTime
       });
-      emitSpanEvent(mergeDebugInfo(), putStartTime, "PUT");
+      spanEmitter(mergeDebugInfo(), putStartTime, "PUT");
     });
     waitUntil?.(cacheStoringPromise);
   }
@@ -420,7 +360,8 @@ async function fetchWithServerCache(url, requestInit, {
   shouldCacheResponse = () => true,
   waitUntil,
   returnType = "json",
-  debugInfo
+  debugInfo,
+  spanEmitter
 } = {}) {
   if (!cacheOptions && (!requestInit.method || requestInit.method === "GET")) {
     cacheOptions = CacheShort();
@@ -446,7 +387,8 @@ async function fetchWithServerCache(url, requestInit, {
       waitUntil,
       strategy: cacheOptions ?? null,
       debugInfo,
-      shouldCacheResult: (result) => shouldCacheResponse(...fromSerializableResponse(result))
+      shouldCacheResult: (result) => shouldCacheResponse(...fromSerializableResponse(result)),
+      spanEmitter
     }
   ).then(fromSerializableResponse);
 }
@@ -675,6 +617,7 @@ function createStorefrontClient(options) {
     i18n,
     storefrontId,
     logErrors = true,
+    spanEmitter,
     ...clientOptions
   } = options;
   const H2_PREFIX_WARN = "[h2:warn:createStorefrontClient] ";
@@ -762,7 +705,8 @@ function createStorefrontClient(options) {
         stackInfo,
         graphql: graphqlData,
         purpose: storefrontHeaders?.purpose
-      }
+      },
+      spanEmitter
     });
     const errorOptions = {
       url,
@@ -4773,6 +4717,68 @@ var RichText = function(props) {
     }
   );
 };
+
+// src/tracing.ts
+function emitSpanEvent(debugInfo, startTime, cacheStatus, root) {
+  globalThis.__SPANS = globalThis.__SPANS || [];
+  try {
+    const traceId = ensureExpectedRequestId(debugInfo?.requestId || generateRandomHex(16));
+    const endTime = Date.now();
+    let displayName = "unknown";
+    if (debugInfo?.displayName) {
+      displayName = debugInfo.displayName;
+    } else {
+      if (debugInfo.graphql) {
+        displayName = debugInfo.graphql?.match(/(query|mutation)\s+(\w+)/)?.[0]?.replace(/\s+/, " ") || "GraphQL";
+      }
+    }
+    if (cacheStatus) {
+      displayName = `Cache [${cacheStatus}] ${displayName}`;
+    }
+    const trace = {
+      traceId,
+      id: root ? traceId : generateRandomHex(16),
+      name: displayName,
+      timestamp: startTime * 1e3,
+      duration: (endTime - startTime) * 1e3,
+      parentId: root ? void 0 : traceId,
+      tags: {
+        "request.type": cacheStatus ? "cache" : "subrequest"
+      }
+    };
+    globalThis.__SPANS.push(trace);
+  } catch (error) {
+    console.error(error);
+  }
+}
+async function flushSpanEvents() {
+  if (globalThis.__SPANS) {
+    const spans = globalThis.__SPANS;
+    globalThis.__SPANS = [];
+    await fetch("https://outbound-proxy.oxygen.com", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(spans)
+    });
+  }
+}
+function ensureExpectedRequestId(id) {
+  const idArray = id.split(".");
+  if (idArray.length === 2) {
+    return idArray[1];
+  } else {
+    return id;
+  }
+}
+function generateRandomHex(len) {
+  let result = "";
+  while (result.length < len) {
+    result += Math.floor(Math.random() * 16).toString(16);
+  }
+  return result.substring(0, len);
+}
 //! @see: https://shopify.dev/docs/api/storefront/latest/mutations/cartCreate
 //! @see https://shopify.dev/docs/api/storefront/latest/queries/cart
 //! @see: https://shopify.dev/docs/api/storefront/latest/mutations/cartLinesAdd

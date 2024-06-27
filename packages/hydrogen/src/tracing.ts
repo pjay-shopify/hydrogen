@@ -10,6 +10,63 @@ export type SpanEvent = {
   tags: Record<string, string>;
 };
 
+export type SpanEmitter = (debugInfo: DebugOptions, startTime: number, cacheStatus?: string, root?: boolean) => void;
+
+export function createSpanCollector(traceId: string = generateRandomHex(16)) {
+  let spans = [] as SpanEvent[];
+
+  function emitSpanEvent(debugInfo: DebugOptions, startTime: number, cacheStatus?: string, root?: boolean) {
+    try {
+      const endTime = Date.now();
+      let displayName = "unknown";
+  
+      if (debugInfo?.displayName) {
+        displayName = debugInfo.displayName;
+      } else {
+        if (debugInfo.graphql) {
+          displayName = debugInfo.graphql?.match(/(query|mutation)\s+(\w+)/)?.[0]?.replace(/\s+/, ' ') || "GraphQL";
+        }
+      }
+  
+      if (cacheStatus) {
+        displayName = `Cache [${cacheStatus}] ${displayName}`;
+      }
+  
+      const trace = {
+        traceId: traceId,
+        id: root ? traceId : generateRandomHex(16),
+        name: displayName,
+        timestamp: startTime * 1000,
+        duration: (endTime - startTime) * 1000,
+        parentId: root ? undefined : traceId,
+        tags: {
+          'request.type': cacheStatus ? 'cache' : 'subrequest',
+        }
+      }
+  
+      spans.push(trace);
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
+  async function flushSpanEvents() {
+    if (spans.length > 0) {
+      const spansToFlush = spans;
+      spans = [];
+      await fetch("https://outbound-proxy.oxygen.com", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(spansToFlush),
+      });
+    }
+  }
+
+  return [emitSpanEvent, flushSpanEvents];
+}
+
 
 export function emitSpanEvent(debugInfo: DebugOptions, startTime: number, cacheStatus?: string, root?: boolean) {
   globalThis.__SPANS = globalThis.__SPANS || [];
@@ -61,7 +118,6 @@ export async function flushSpanEvents() {
       body: JSON.stringify(spans),
     });
   }
-
 }
 
 function ensureExpectedRequestId(id: string) {

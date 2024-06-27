@@ -405,6 +405,46 @@ declare class GraphQLError extends Error {
     toJSON(): Pick<GraphQLError, "locations" | "path" | "extensions" | "stack" | "name" | "message">;
 }
 
+type StackInfo = {
+    file?: string;
+    func?: string;
+    line?: number;
+    column?: number;
+};
+
+/**
+ * The cache key is used to uniquely identify a value in the cache.
+ */
+type CacheKey = string | readonly unknown[];
+type DebugOptions = {
+    url?: string;
+    requestId?: string | null;
+    graphql?: string | null;
+    purpose?: string | null;
+    stackInfo?: StackInfo;
+    displayName?: string;
+};
+type AddDebugDataParam = {
+    displayName?: string;
+    response?: Pick<Response, 'url' | 'status' | 'statusText' | 'headers'>;
+};
+type CacheActionFunctionParam = {
+    addDebugData: (info: AddDebugDataParam) => void;
+};
+
+type SpanEvent = {
+    traceId: string;
+    id: string;
+    name: string;
+    timestamp: number;
+    duration: number;
+    parentId?: string;
+    tags: Record<string, string>;
+};
+type SpanEmitter = (debugInfo: DebugOptions, startTime: number, cacheStatus?: string, root?: boolean) => void;
+declare function emitSpanEvent(debugInfo: DebugOptions, startTime: number, cacheStatus?: string, root?: boolean): void;
+declare function flushSpanEvents(): Promise<void>;
+
 type I18nBase = {
     language: LanguageCode;
     country: CountryCode;
@@ -467,6 +507,7 @@ type HydrogenClientProps<TI18n> = {
     i18n?: TI18n;
     /** Whether it should print GraphQL errors automatically. Defaults to true */
     logErrors?: boolean | ((error?: Error) => boolean);
+    spanEmitter?: SpanEmitter;
 };
 type CreateStorefrontClientOptions<TI18n extends I18nBase> = HydrogenClientProps<TI18n> & StorefrontClientProps;
 type StorefrontHeaders = {
@@ -543,33 +584,6 @@ type StorefrontMutationOptionsForDocs = {
     storefrontApiVersion?: string;
     /** The name of the query for debugging in the Subrequest Profiler. */
     displayName?: string;
-};
-
-type StackInfo = {
-    file?: string;
-    func?: string;
-    line?: number;
-    column?: number;
-};
-
-/**
- * The cache key is used to uniquely identify a value in the cache.
- */
-type CacheKey = string | readonly unknown[];
-type DebugOptions = {
-    url?: string;
-    requestId?: string | null;
-    graphql?: string | null;
-    purpose?: string | null;
-    stackInfo?: StackInfo;
-    displayName?: string;
-};
-type AddDebugDataParam = {
-    displayName?: string;
-    response?: Pick<Response, 'url' | 'status' | 'statusText' | 'headers'>;
-};
-type CacheActionFunctionParam = {
-    addDebugData: (info: AddDebugDataParam) => void;
 };
 
 type CrossRuntimeRequest = {
@@ -1048,18 +1062,6 @@ type RequestEventPayload = {
 
 declare const CUSTOMER_ACCOUNT_SESSION_KEY = "customerAccount";
 declare const BUYER_SESSION_KEY = "buyer";
-
-type SpanEvent = {
-    traceId: string;
-    id: string;
-    name: string;
-    timestamp: number;
-    duration: number;
-    parentId?: string;
-    tags: Record<string, string>;
-};
-declare function emitSpanEvent(debugInfo: DebugOptions, startTime: number, cacheStatus?: string, root?: boolean): void;
-declare function flushSpanEvents(): Promise<void>;
 
 interface HydrogenSessionData {
   [CUSTOMER_ACCOUNT_SESSION_KEY]: {

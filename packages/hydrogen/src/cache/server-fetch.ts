@@ -4,6 +4,7 @@ import {
   runWithCache,
   type DebugOptions,
 } from './run-with-cache.js';
+import { SpanEmitter } from '../tracing.js';
 
 export type FetchCacheOptions = {
   cache?: CachingStrategy;
@@ -13,6 +14,7 @@ export type FetchCacheOptions = {
   waitUntil?: ExecutionContext['waitUntil'];
   returnType?: 'json' | 'text' | 'arrayBuffer' | 'blob';
   debugInfo?: DebugOptions;
+  spanEmitter?: SpanEmitter;
 };
 
 function toSerializableResponse(body: any, response: Response) {
@@ -51,6 +53,7 @@ export async function fetchWithServerCache(
     waitUntil,
     returnType = 'json',
     debugInfo,
+    spanEmitter
   }: FetchCacheOptions = {},
 ): Promise<readonly [any, Response]> {
   if (!cacheOptions && (!requestInit.method || requestInit.method === 'GET')) {
@@ -83,6 +86,7 @@ export async function fetchWithServerCache(
       debugInfo,
       shouldCacheResult: (result) =>
         shouldCacheResponse(...fromSerializableResponse(result)),
+      spanEmitter,
     },
   ).then(fromSerializableResponse);
 }
