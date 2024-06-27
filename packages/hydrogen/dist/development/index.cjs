@@ -4813,6 +4813,54 @@ var RichText = function(props) {
 };
 
 // src/tracing.ts
+function createSpanCollector(traceId = generateRandomHex(16)) {
+  let spans = [];
+  traceId = ensureExpectedRequestId(traceId);
+  function emitSpanEvent2(debugInfo, startTime, cacheStatus, root) {
+    try {
+      const endTime = Date.now();
+      let displayName = "unknown";
+      if (debugInfo?.displayName) {
+        displayName = debugInfo.displayName;
+      } else {
+        if (debugInfo.graphql) {
+          displayName = debugInfo.graphql?.match(/(query|mutation)\s+(\w+)/)?.[0]?.replace(/\s+/, " ") || "GraphQL";
+        }
+      }
+      if (cacheStatus) {
+        displayName = `Cache [${cacheStatus}] ${displayName}`;
+      }
+      const trace = {
+        traceId,
+        id: root ? traceId : generateRandomHex(16),
+        name: displayName,
+        timestamp: startTime * 1e3,
+        duration: (endTime - startTime) * 1e3,
+        parentId: root ? void 0 : traceId,
+        tags: {
+          "request.type": cacheStatus ? "cache" : "subrequest"
+        }
+      };
+      spans.push(trace);
+    } catch (error) {
+      console.error(error);
+    }
+  }
+  async function flushSpanEvents2() {
+    if (spans.length > 0) {
+      const spansToFlush = spans;
+      spans = [];
+      await fetch("https://outbound-proxy.oxygen.com", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(spansToFlush)
+      });
+    }
+  }
+  return [emitSpanEvent2, flushSpanEvents2];
+}
 function emitSpanEvent(debugInfo, startTime, cacheStatus, root) {
   globalThis.__SPANS = globalThis.__SPANS || [];
   try {
@@ -5002,6 +5050,7 @@ exports.changelogHandler = changelogHandler;
 exports.createCartHandler = createCartHandler;
 exports.createContentSecurityPolicy = createContentSecurityPolicy;
 exports.createCustomerAccountClient = createCustomerAccountClient;
+exports.createSpanCollector = createSpanCollector;
 exports.createStorefrontClient = createStorefrontClient;
 exports.createWithCache = createWithCache;
 exports.emitSpanEvent = emitSpanEvent;

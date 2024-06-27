@@ -12,8 +12,9 @@ export type SpanEvent = {
 
 export type SpanEmitter = (debugInfo: DebugOptions, startTime: number, cacheStatus?: string, root?: boolean) => void;
 
-export function createSpanCollector(traceId: string = generateRandomHex(16)) {
+export function createSpanCollector(traceId: string = generateRandomHex(16)): [SpanEmitter, () => Promise<void>] {
   let spans = [] as SpanEvent[];
+  traceId = ensureExpectedRequestId(traceId);
 
   function emitSpanEvent(debugInfo: DebugOptions, startTime: number, cacheStatus?: string, root?: boolean) {
     try {

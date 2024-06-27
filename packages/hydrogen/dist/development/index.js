@@ -4719,6 +4719,54 @@ var RichText = function(props) {
 };
 
 // src/tracing.ts
+function createSpanCollector(traceId = generateRandomHex(16)) {
+  let spans = [];
+  traceId = ensureExpectedRequestId(traceId);
+  function emitSpanEvent2(debugInfo, startTime, cacheStatus, root) {
+    try {
+      const endTime = Date.now();
+      let displayName = "unknown";
+      if (debugInfo?.displayName) {
+        displayName = debugInfo.displayName;
+      } else {
+        if (debugInfo.graphql) {
+          displayName = debugInfo.graphql?.match(/(query|mutation)\s+(\w+)/)?.[0]?.replace(/\s+/, " ") || "GraphQL";
+        }
+      }
+      if (cacheStatus) {
+        displayName = `Cache [${cacheStatus}] ${displayName}`;
+      }
+      const trace = {
+        traceId,
+        id: root ? traceId : generateRandomHex(16),
+        name: displayName,
+        timestamp: startTime * 1e3,
+        duration: (endTime - startTime) * 1e3,
+        parentId: root ? void 0 : traceId,
+        tags: {
+          "request.type": cacheStatus ? "cache" : "subrequest"
+        }
+      };
+      spans.push(trace);
+    } catch (error) {
+      console.error(error);
+    }
+  }
+  async function flushSpanEvents2() {
+    if (spans.length > 0) {
+      const spansToFlush = spans;
+      spans = [];
+      await fetch("https://outbound-proxy.oxygen.com", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(spansToFlush)
+      });
+    }
+  }
+  return [emitSpanEvent2, flushSpanEvents2];
+}
 function emitSpanEvent(debugInfo, startTime, cacheStatus, root) {
   globalThis.__SPANS = globalThis.__SPANS || [];
   try {
@@ -4791,6 +4839,6 @@ function generateRandomHex(len) {
 //! @see https://shopify.dev/docs/api/storefront/latest/mutations/cartMetafieldsSet
 //! @see https://shopify.dev/docs/api/storefront/2024-04/mutations/cartMetafieldDelete
 
-export { Analytics, AnalyticsEvent, CacheCustom, CacheLong, CacheNone, CacheShort, CartForm, InMemoryCache, OptimisticInput, Pagination, RichText, Script, Seo, ShopPayButton, VariantSelector, cartAttributesUpdateDefault, cartBuyerIdentityUpdateDefault, cartCreateDefault, cartDiscountCodesUpdateDefault, cartGetDefault, cartGetIdDefault, cartLinesAddDefault, cartLinesRemoveDefault, cartLinesUpdateDefault, cartMetafieldDeleteDefault, cartMetafieldsSetDefault, cartNoteUpdateDefault, cartSelectedDeliveryOptionsUpdateDefault, cartSetIdDefault, changelogHandler, createCartHandler, createContentSecurityPolicy, createCustomerAccountClient, createStorefrontClient, createWithCache, emitSpanEvent, flushSpanEvents, formatAPIResult, generateCacheControlHeader, getCustomerPrivacy, getPaginationVariables, getSelectedProductOptions, getSeoMeta, getShopAnalytics, graphiqlLoader, storefrontRedirect, useAnalytics, useCustomerPrivacy, useNonce, useOptimisticCart, useOptimisticData, useOptimisticProduct };
+export { Analytics, AnalyticsEvent, CacheCustom, CacheLong, CacheNone, CacheShort, CartForm, InMemoryCache, OptimisticInput, Pagination, RichText, Script, Seo, ShopPayButton, VariantSelector, cartAttributesUpdateDefault, cartBuyerIdentityUpdateDefault, cartCreateDefault, cartDiscountCodesUpdateDefault, cartGetDefault, cartGetIdDefault, cartLinesAddDefault, cartLinesRemoveDefault, cartLinesUpdateDefault, cartMetafieldDeleteDefault, cartMetafieldsSetDefault, cartNoteUpdateDefault, cartSelectedDeliveryOptionsUpdateDefault, cartSetIdDefault, changelogHandler, createCartHandler, createContentSecurityPolicy, createCustomerAccountClient, createSpanCollector, createStorefrontClient, createWithCache, emitSpanEvent, flushSpanEvents, formatAPIResult, generateCacheControlHeader, getCustomerPrivacy, getPaginationVariables, getSelectedProductOptions, getSeoMeta, getShopAnalytics, graphiqlLoader, storefrontRedirect, useAnalytics, useCustomerPrivacy, useNonce, useOptimisticCart, useOptimisticData, useOptimisticProduct };
 //# sourceMappingURL=out.js.map
 //# sourceMappingURL=index.js.map

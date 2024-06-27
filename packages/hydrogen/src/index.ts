@@ -163,4 +163,4 @@ export type {
 
 export type {HydrogenSessionData, HydrogenSession} from './hydrogen';
 
-export {emitSpanEvent, flushSpanEvents} from './tracing';
+export {emitSpanEvent, flushSpanEvents, createSpanCollector} from './tracing';
