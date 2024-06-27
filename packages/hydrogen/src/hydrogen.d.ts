@@ -7,6 +7,7 @@ import type {
 import type {RequestEventPayload} from './vite/request-events';
 import {CUSTOMER_ACCOUNT_SESSION_KEY, BUYER_SESSION_KEY} from './constants';
 import type {BuyerInput} from '@shopify/hydrogen-react/storefront-api-types';
+import type { SpanEvent } from './tracing';
 
 export interface HydrogenSessionData {
   [CUSTOMER_ACCOUNT_SESSION_KEY]: {
@@ -55,6 +56,7 @@ declare global {
     dispatchEvent<K extends keyof CustomEventMap>(ev: CustomEventMap[K]): void;
   }
   var __H2O_LOG_EVENT: undefined | ((event: RequestEventPayload) => void);
+  var __SPANS: undefined | SpanEvent[];
   var __remix_devServerHooks:
     | undefined
     | {getCriticalCss: (...args: unknown[]) => any};

@@ -545,10 +545,25 @@ type StorefrontMutationOptionsForDocs = {
     displayName?: string;
 };
 
+type StackInfo = {
+    file?: string;
+    func?: string;
+    line?: number;
+    column?: number;
+};
+
 /**
  * The cache key is used to uniquely identify a value in the cache.
  */
 type CacheKey = string | readonly unknown[];
+type DebugOptions = {
+    url?: string;
+    requestId?: string | null;
+    graphql?: string | null;
+    purpose?: string | null;
+    stackInfo?: StackInfo;
+    displayName?: string;
+};
 type AddDebugDataParam = {
     displayName?: string;
     response?: Pick<Response, 'url' | 'status' | 'statusText' | 'headers'>;
@@ -1034,6 +1049,18 @@ type RequestEventPayload = {
 declare const CUSTOMER_ACCOUNT_SESSION_KEY = "customerAccount";
 declare const BUYER_SESSION_KEY = "buyer";
 
+type SpanEvent = {
+    traceId: string;
+    id: string;
+    name: string;
+    timestamp: number;
+    duration: number;
+    parentId: string;
+    tags: Record<string, string>;
+};
+declare function emitSpanEvent(debugInfo: DebugOptions, startTime: number, cacheStatus?: string): void;
+declare function flushSpanEvents(): Promise<void>;
+
 interface HydrogenSessionData {
   [CUSTOMER_ACCOUNT_SESSION_KEY]: {
     accessToken?: string;
@@ -1081,6 +1108,7 @@ declare global {
     dispatchEvent<K extends keyof CustomEventMap>(ev: CustomEventMap[K]): void;
   }
   var __H2O_LOG_EVENT: undefined | ((event: RequestEventPayload) => void);
+  var __SPANS: undefined | SpanEvent[];
   var __remix_devServerHooks:
     | undefined
     | {getCriticalCss: (...args: unknown[]) => any};
@@ -1970,4 +1998,4 @@ declare const Analytics: {
 
 declare const RichText: typeof RichText$1;
 
-export { Analytics, AnalyticsEvent, CacheCustom, type CacheKey, CacheLong, CacheNone, CacheShort, type CachingStrategy, type CartActionInput, CartForm, type CartLineUpdatePayload, type CartQueryDataReturn, type CartQueryOptions, type CartQueryReturn, type CartReturn, type CartUpdatePayload, type CartViewPayload, type CollectionViewPayload, type ConsentStatus, type CookieOptions, type CreateStorefrontClientForDocs, type CreateStorefrontClientOptions, type CustomEventMap$1 as CustomEventMap, type CustomerAccount, type CustomerAccountMutations, type CustomerAccountQueries, type CustomerPrivacy$1 as CustomerPrivacy, type CustomerPrivacyApiProps, type CustomerPrivacyConsentConfig, type HydrogenCart, type HydrogenCartCustom, type HydrogenSession, type HydrogenSessionData, type I18nBase, InMemoryCache, type MetafieldWithoutOwnerId, type NoStoreStrategy, type OptimisticCart, type OptimisticCartLine, type OptimisticCartLineInput, OptimisticInput, type PageViewPayload, Pagination, type PrivacyBanner$1 as PrivacyBanner, type ProductViewPayload, RichText, Script, type SearchViewPayload, Seo, type SeoConfig, type SeoHandleFunction, type SetConsentHeadlessParams, ShopPayButton, type Storefront, type StorefrontApiErrors, type StorefrontClient, type StorefrontForDoc, type StorefrontMutationOptionsForDocs, type StorefrontMutations, type StorefrontQueries, type StorefrontQueryOptionsForDocs, type VariantOption, type VariantOptionValue, VariantSelector, type VisitorConsent, type VisitorConsentCollected, type WithCache, cartAttributesUpdateDefault, cartBuyerIdentityUpdateDefault, cartCreateDefault, cartDiscountCodesUpdateDefault, cartGetDefault, cartGetIdDefault, cartLinesAddDefault, cartLinesRemoveDefault, cartLinesUpdateDefault, cartMetafieldDeleteDefault, cartMetafieldsSetDefault, cartNoteUpdateDefault, cartSelectedDeliveryOptionsUpdateDefault, cartSetIdDefault, changelogHandler, createCartHandler, createContentSecurityPolicy, createCustomerAccountClient, createStorefrontClient, createWithCache, formatAPIResult, generateCacheControlHeader, getCustomerPrivacy, getPaginationVariables, getSelectedProductOptions, getSeoMeta, getShopAnalytics, graphiqlLoader, storefrontRedirect, useAnalytics, useCustomerPrivacy, useNonce, useOptimisticCart, useOptimisticData, useOptimisticProduct };
+export { Analytics, AnalyticsEvent, CacheCustom, type CacheKey, CacheLong, CacheNone, CacheShort, type CachingStrategy, type CartActionInput, CartForm, type CartLineUpdatePayload, type CartQueryDataReturn, type CartQueryOptions, type CartQueryReturn, type CartReturn, type CartUpdatePayload, type CartViewPayload, type CollectionViewPayload, type ConsentStatus, type CookieOptions, type CreateStorefrontClientForDocs, type CreateStorefrontClientOptions, type CustomEventMap$1 as CustomEventMap, type CustomerAccount, type CustomerAccountMutations, type CustomerAccountQueries, type CustomerPrivacy$1 as CustomerPrivacy, type CustomerPrivacyApiProps, type CustomerPrivacyConsentConfig, type HydrogenCart, type HydrogenCartCustom, type HydrogenSession, type HydrogenSessionData, type I18nBase, InMemoryCache, type MetafieldWithoutOwnerId, type NoStoreStrategy, type OptimisticCart, type OptimisticCartLine, type OptimisticCartLineInput, OptimisticInput, type PageViewPayload, Pagination, type PrivacyBanner$1 as PrivacyBanner, type ProductViewPayload, RichText, Script, type SearchViewPayload, Seo, type SeoConfig, type SeoHandleFunction, type SetConsentHeadlessParams, ShopPayButton, type Storefront, type StorefrontApiErrors, type StorefrontClient, type StorefrontForDoc, type StorefrontMutationOptionsForDocs, type StorefrontMutations, type StorefrontQueries, type StorefrontQueryOptionsForDocs, type VariantOption, type VariantOptionValue, VariantSelector, type VisitorConsent, type VisitorConsentCollected, type WithCache, cartAttributesUpdateDefault, cartBuyerIdentityUpdateDefault, cartCreateDefault, cartDiscountCodesUpdateDefault, cartGetDefault, cartGetIdDefault, cartLinesAddDefault, cartLinesRemoveDefault, cartLinesUpdateDefault, cartMetafieldDeleteDefault, cartMetafieldsSetDefault, cartNoteUpdateDefault, cartSelectedDeliveryOptionsUpdateDefault, cartSetIdDefault, changelogHandler, createCartHandler, createContentSecurityPolicy, createCustomerAccountClient, createStorefrontClient, createWithCache, emitSpanEvent, flushSpanEvents, formatAPIResult, generateCacheControlHeader, getCustomerPrivacy, getPaginationVariables, getSelectedProductOptions, getSeoMeta, getShopAnalytics, graphiqlLoader, storefrontRedirect, useAnalytics, useCustomerPrivacy, useNonce, useOptimisticCart, useOptimisticData, useOptimisticProduct };

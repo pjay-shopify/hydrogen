@@ -162,3 +162,5 @@ export type {
 } from '@shopify/hydrogen-react';
 
 export type {HydrogenSessionData, HydrogenSession} from './hydrogen';
+
+export {emitSpanEvent, flushSpanEvents} from './tracing';
