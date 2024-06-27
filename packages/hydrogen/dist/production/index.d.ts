@@ -1055,10 +1055,10 @@ type SpanEvent = {
     name: string;
     timestamp: number;
     duration: number;
-    parentId: string;
+    parentId?: string;
     tags: Record<string, string>;
 };
-declare function emitSpanEvent(debugInfo: DebugOptions, startTime: number, cacheStatus?: string): void;
+declare function emitSpanEvent(debugInfo: DebugOptions, startTime: number, cacheStatus?: string, root?: boolean): void;
 declare function flushSpanEvents(): Promise<void>;
 
 interface HydrogenSessionData {

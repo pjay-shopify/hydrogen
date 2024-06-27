@@ -25,13 +25,13 @@ declare namespace hydrogen {
     var preset: () => {
         name: string;
         remixConfigResolved({ remixConfig }: {
-            remixConfig: Readonly<Pick<_remix_run_dev.ResolvedRemixConfig, "appDirectory" | "future" | "publicPath" | "routes" | "serverModuleFormat"> & {
+            remixConfig: Readonly<Pick<_remix_run_dev.ResolvedRemixConfig, "routes" | "appDirectory" | "future" | "publicPath" | "serverModuleFormat"> & {
                 basename: string;
                 buildDirectory: string;
                 buildEnd?: ((args: {
                     buildManifest: _remix_run_dev.BuildManifest | undefined;
-                    remixConfig: Readonly<Pick<_remix_run_dev.ResolvedRemixConfig, "appDirectory" | "future" | "publicPath" | "routes" | "serverModuleFormat"> & any>;
-                    viteConfig: Readonly<Omit<vite.UserConfig, "plugins" | "css" | "assetsInclude" | "build" | "optimizeDeps" | "worker"> & {
+                    remixConfig: Readonly<Pick<_remix_run_dev.ResolvedRemixConfig, "routes" | "appDirectory" | "future" | "publicPath" | "serverModuleFormat"> & any>;
+                    viteConfig: Readonly<Omit<vite.UserConfig, "plugins" | "css" | "assetsInclude" | "optimizeDeps" | "worker" | "build"> & {
                         configFile: string | undefined;
                         configFileDependencies: string[];
                         inlineConfig: vite.InlineConfig;

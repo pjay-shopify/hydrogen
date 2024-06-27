@@ -302,7 +302,7 @@ function hashKey(queryKey) {
 }
 
 // src/tracing.ts
-function emitSpanEvent(debugInfo, startTime, cacheStatus) {
+function emitSpanEvent(debugInfo, startTime, cacheStatus, root) {
   globalThis.__SPANS = globalThis.__SPANS || [];
   try {
     const traceId = ensureExpectedRequestId(debugInfo?.requestId || generateRandomHex(16));
@@ -320,11 +320,11 @@ function emitSpanEvent(debugInfo, startTime, cacheStatus) {
     }
     const trace = {
       traceId,
-      id: generateRandomHex(16),
+      id: root ? traceId : generateRandomHex(16),
       name: displayName,
       timestamp: startTime * 1e3,
       duration: (endTime - startTime) * 1e3,
-      parentId: traceId,
+      parentId: root ? void 0 : traceId,
       tags: {
         "request.type": cacheStatus ? "cache" : "subrequest"
       }

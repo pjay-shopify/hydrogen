@@ -6,12 +6,12 @@ export type SpanEvent = {
   name: string;
   timestamp: number;
   duration: number;
-  parentId: string;
+  parentId?: string;
   tags: Record<string, string>;
 };
 
 
-export function emitSpanEvent(debugInfo: DebugOptions, startTime: number, cacheStatus?: string) {
+export function emitSpanEvent(debugInfo: DebugOptions, startTime: number, cacheStatus?: string, root?: boolean) {
   globalThis.__SPANS = globalThis.__SPANS || [];
 
   try {
@@ -33,11 +33,11 @@ export function emitSpanEvent(debugInfo: DebugOptions, startTime: number, cacheS
 
     const trace = {
       traceId: traceId,
-      id: generateRandomHex(16),
+      id: root ? traceId : generateRandomHex(16),
       name: displayName,
       timestamp: startTime * 1000,
       duration: (endTime - startTime) * 1000,
-      parentId: traceId,
+      parentId: root ? undefined : traceId,
       tags: {
         'request.type': cacheStatus ? 'cache' : 'subrequest',
       }
