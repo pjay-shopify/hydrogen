@@ -412,12 +412,14 @@ async function runWithCache(cacheKey, actionFn, {
     spanEmitter(mergeDebugInfo(), startTime, cacheStatus);
     return cachedResult;
   }
+  spanEmitter(mergeDebugInfo(), startTime, "MISS");
+  const fetchStartTime = Date.now();
   const result = await actionFn({ addDebugData });
   logSubRequestEvent2?.({
     result,
     cacheStatus: "MISS"
   });
-  spanEmitter(mergeDebugInfo(), startTime, "MISS");
+  spanEmitter(mergeDebugInfo(), fetchStartTime);
   if (shouldCacheResult(result)) {
     const cacheStoringPromise = Promise.resolve().then(async () => {
       const putStartTime = Date.now();

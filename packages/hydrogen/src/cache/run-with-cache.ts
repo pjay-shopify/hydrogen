@@ -225,6 +225,9 @@ export async function runWithCache<T = unknown>(
     return cachedResult;
   }
 
+  spanEmitter(mergeDebugInfo(), startTime, 'MISS');
+
+  const fetchStartTime = Date.now();
   const result = await actionFn({addDebugData});
 
   // Log MISS requests
@@ -233,7 +236,7 @@ export async function runWithCache<T = unknown>(
     cacheStatus: 'MISS',
   });
 
-  spanEmitter(mergeDebugInfo(), startTime, 'MISS');
+  spanEmitter(mergeDebugInfo(), fetchStartTime);
 
   /**
    * Important: Do this async
