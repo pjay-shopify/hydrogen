@@ -289,14 +289,16 @@ async function runWithCache(cacheKey, actionFn, {
         const revalidateStartTime = Date.now();
         try {
           const result2 = await actionFn({ addDebugData });
+          spanEmitter(mergeDebugInfo(), revalidateStartTime);
           if (shouldCacheResult(result2)) {
+            const cachePutStartTime = Date.now();
             await storeInCache(result2);
+            spanEmitter(mergeDebugInfo(), cachePutStartTime, "PUT");
             logSubRequestEvent2?.({
               result: result2,
               cacheStatus: "PUT",
               overrideStartTime: revalidateStartTime
             });
-            spanEmitter(mergeDebugInfo(), revalidateStartTime, "PUT");
           }
         } catch (error) {
           if (error.message) {

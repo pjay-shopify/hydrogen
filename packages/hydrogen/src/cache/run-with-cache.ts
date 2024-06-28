@@ -185,18 +185,19 @@ export async function runWithCache<T = unknown>(
         const revalidateStartTime = Date.now();
         try {
           const result = await actionFn({addDebugData});
+          spanEmitter(mergeDebugInfo(), revalidateStartTime);
 
           if (shouldCacheResult(result)) {
+            const cachePutStartTime = Date.now();
             await storeInCache(result);
 
+            spanEmitter(mergeDebugInfo(), cachePutStartTime, 'PUT');
             // Log PUT requests with the revalidate start time
             logSubRequestEvent?.({
               result,
               cacheStatus: 'PUT',
               overrideStartTime: revalidateStartTime,
             });
-
-            spanEmitter(mergeDebugInfo(), revalidateStartTime, 'PUT');
           }
         } catch (error: any) {
           if (error.message) {
